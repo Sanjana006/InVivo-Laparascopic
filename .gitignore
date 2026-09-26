@@ -10,50 +10,81 @@ __pycache__/
 dist/
 build/
 .eggs/
+.ipynb_checkpoints/
+*/.ipynb_checkpoints/*
 
 # =============================================================
 #  Virtual Environments
 # =============================================================
-venv/
-env/
-.venv/
+venv*/
+.venv*/
+*venv*/
+env*/
+.env*/
 .env
+conda-env/
+.conda/
 
 # =============================================================
-#  Dataset (large image directories — not committed to git)
+#  Datasets & Archives (large files — not committed to git)
 # =============================================================
 data_final/
 organized_clean_hazy/
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.rar
+*.7z
 
 # =============================================================
-#  Model Checkpoints & Weights (large .pth files)
+#  Model Checkpoints & Weights
 # =============================================================
-experiments/*/G_final.pth
+checkpoints/
+*/checkpoints/
 experiments/*/checkpoints/
+experiments/*/G_final.pth
+*.pth
+*.pt
+*.ckpt
+*.onnx
+*.safetensors
 
 # =============================================================
-#  Training Outputs (generated, not source — but keep dir structure)
+#  Training Outputs & Runs
 # =============================================================
+outputs/
+*/outputs/
 experiments/*/outputs/samples/*
 experiments/*/outputs/test_images/*
 experiments/*/outputs/plots/*
 experiments/*/logs/*
+wandb/
+runs/
 
-# Always track .gitkeep so empty dirs are preserved in git
+# Always track .gitkeep so empty directory structures are preserved
 !**/.gitkeep
 
 # =============================================================
-#  Logs & Temp Files
+#  Logs & Temporary Files
 # =============================================================
+*.log
 pipeline_run.log
 ___pipeline_run.log
 log.txt
-*.log
+*.tmp
+*.temp
 
 # =============================================================
-#  Misc
+#  Editor & OS Files
 # =============================================================
-result.png
-data_final.zip
+.vscode/
+.idea/
+.cursor/
 .DS_Store
+._*
 Thumbs.db
+desktop.ini
+~$*.doc*
+~$*.xls*
+~$*.ppt*
