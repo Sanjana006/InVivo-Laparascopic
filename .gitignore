@@ -1,0 +1,59 @@
+# =============================================================
+#  Python & Jupyter
+# =============================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# =============================================================
+#  Virtual Environments
+# =============================================================
+venv/
+env/
+.venv/
+.env
+
+# =============================================================
+#  Dataset (large image directories — not committed to git)
+# =============================================================
+data_final/
+organized_clean_hazy/
+
+# =============================================================
+#  Model Checkpoints & Weights (large .pth files)
+# =============================================================
+experiments/*/G_final.pth
+experiments/*/checkpoints/
+
+# =============================================================
+#  Training Outputs (generated, not source — but keep dir structure)
+# =============================================================
+experiments/*/outputs/samples/*
+experiments/*/outputs/test_images/*
+experiments/*/outputs/plots/*
+experiments/*/logs/*
+
+# Always track .gitkeep so empty dirs are preserved in git
+!**/.gitkeep
+
+# =============================================================
+#  Logs & Temp Files
+# =============================================================
+pipeline_run.log
+___pipeline_run.log
+log.txt
+*.log
+
+# =============================================================
+#  Misc
+# =============================================================
+result.png
+data_final.zip
+.DS_Store
+Thumbs.db

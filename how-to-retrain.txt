@@ -1,0 +1,61 @@
+========================================================================
+         IN-VIVO LAPAROSCOPIC DEHAZING — HOW TO RETRAIN
+========================================================================
+
+All commands should be run from the project root directory.
+Make sure your virtual environment is active and data_final/ is populated.
+
+------------------------------------------------------------------------
+1. STANDARD U-NET (Pix2Pix Baseline — Experiment 01)
+------------------------------------------------------------------------
+Output : experiments/01_without_attention/
+
+  python train.py --model_type standard --epochs 100
+
+------------------------------------------------------------------------
+2. ATTENTION U-NET (Supervised Paired GAN — Experiment 02)
+------------------------------------------------------------------------
+Output : experiments/02_attention_unet/
+
+  python train.py --model_type attention --epochs 100 --augment
+
+  Generator  : Attention_Generator (U-Net + Additive Attention Gates + BatchNorm)
+  Discriminator: Conditional PatchGAN-70 (6-channel input)
+  Loss       : Adversarial (BCE) + L1 pixel loss (λ=100)
+
+------------------------------------------------------------------------
+3. CYCLE-DEHAZE (Unpaired CycleGAN — Experiment 03)
+------------------------------------------------------------------------
+Output : experiments/03_cycle_dehaze/
+
+  python train.py --model_type cycle_dehaze --epochs 100 --augment
+
+  Generator G : Cycle_Dehaze_Attention (Smoky → Clean, InstanceNorm + Tanh)
+  Generator F : Cycle_Dehaze_Attention (Clean → Smoky, InstanceNorm + Tanh)
+  Discriminators: 2× Unconditional PatchGAN-70 (InstanceNorm)
+  Loss       : LSGAN + Cycle-Consistency (L1, λ=10) +
+               Identity (L1, λ_id=5) + Cyclic Perceptual VGG16 (γ=0.0001)
+
+------------------------------------------------------------------------
+4. RESUME TRAINING FROM A CHECKPOINT
+------------------------------------------------------------------------
+  python train.py --model_type cycle_dehaze --epochs 100 \
+      --resume experiments/03_cycle_dehaze/checkpoints/epoch_50.pth
+
+------------------------------------------------------------------------
+5. EVALUATION (generates PSNR / SSIM / LPIPS + saves test images)
+------------------------------------------------------------------------
+  python evaluate.py --model_type attention
+  python evaluate.py --model_type cycle_dehaze
+
+  Output images → experiments/<exp>/outputs/test_images/
+    smoky_XXXX.png    ← hazy input
+    dehazed_XXXX.png  ← model output
+    clean_XXXX.png    ← ground truth
+
+------------------------------------------------------------------------
+6. FULL PIPELINE (train → evaluate in one shot)
+------------------------------------------------------------------------
+  python run_pipeline.py --model_type cycle_dehaze --epochs 100 --augment
+
+========================================================================
