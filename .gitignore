@@ -28,6 +28,7 @@ conda-env/
 # =============================================================
 #  Datasets & Archives (large files — not committed to git)
 # =============================================================
+data/
 data_final/
 organized_clean_hazy/
 *.zip
@@ -74,6 +75,9 @@ ___pipeline_run.log
 log.txt
 *.tmp
 *.temp
+scratch/
+train_hazematching.py
+how-to-retrain.txt
 
 # =============================================================
 #  Editor & OS Files
@@ -85,6 +89,16 @@ log.txt
 ._*
 Thumbs.db
 desktop.ini
+
+# =============================================================
+#  Documents, Reports & Office Files (keep markdown in git)
+# =============================================================
+*.docx
+*.doc
+*.pptx
+*.ppt
+*.xlsx
+*.xls
 ~$*.doc*
 ~$*.xls*
 ~$*.ppt*
