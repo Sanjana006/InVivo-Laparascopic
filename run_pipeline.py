@@ -44,6 +44,8 @@ EXP_DIR_MAP = {
     "attention":     "experiments/02_attention_unet",
     "cycle_dehaze":  "experiments/03_cycle_dehaze",
     "hazematching":  "experiments/04_hazematching",
+    "trident":       "experiments/04_trident_dehazing",
+    "attention_dehaze": "experiments/05_attention_dehaze",
 }
 
 
@@ -55,6 +57,8 @@ def parse_args():
     parser.add_argument("--mode",       type=str,
                         choices=["all", "train", "test"], default="all")
     parser.add_argument("--epochs",     type=int,  default=100)
+    parser.add_argument("--val_interval", type=int, default=1,
+                        help="Validation interval in epochs (default: 1, validate every epoch)")
     parser.add_argument("--batch_size", type=int,  default=4,
                         help="Batch size (paper: 4)")
 
@@ -65,17 +69,21 @@ def parse_args():
     parser.add_argument("--resume",     type=str,  default=None,
                         help="Path to checkpoint to resume from")
     parser.add_argument("--model_type", type=str,
-                        choices=["standard", "attention", "cycle_dehaze", "hazematching"],
+                        choices=["standard", "attention", "cycle_dehaze", "hazematching", "trident", "attention_dehaze"],
                         default="attention",
-                        help="standard      → experiments/01_without_attention\n"
-                             "attention     → experiments/02_attention_unet\n"
-                             "cycle_dehaze  → experiments/03_cycle_dehaze\n"
-                             "hazematching  → experiments/04_hazematching")
+                        help="standard          → experiments/01_without_attention\n"
+                             "attention         → experiments/02_attention_unet\n"
+                             "cycle_dehaze      → experiments/03_cycle_dehaze\n"
+                             "hazematching      → experiments/04_hazematching\n"
+                             "trident           → experiments/04_trident_dehazing\n"
+                             "attention_dehaze  → experiments/05_attention_dehaze")
     parser.add_argument("--augment",    action="store_true",
                         help="Enable data augmentation (random flips) — GAN models only")
-    # HazeMatching-specific args
+    parser.add_argument("--backbone",   type=str, default="dpn92", choices=["dpn92", "endovit"],
+                        help="[trident only] Pretrained backbone ('dpn92' or 'endovit')")
+    # HazeMatching / Trident data_dir
     parser.add_argument("--data_dir",   type=str, default="data/laparoscopy",
-                        help="[hazematching only] Root data dir with train_crop/, val_crop/, test/")
+                        help="[hazematching/trident] Root data dir with train_crop/, val_crop/, test/")
     parser.add_argument("--n_val_samples", type=int, default=5,
                         help="[hazematching only] Stochastic ODE samples for per-epoch validation")
     parser.add_argument("--num_val_steps", type=int, default=10,
@@ -103,6 +111,16 @@ def main():
     # ── HazeMatching branch (Conditional Flow Matching) ───────────────────
     if args.model_type == "hazematching":
         _run_hazematching(args, exp_dir, logger)
+        return
+
+    # ── Trident Dehazing Network branch ───────────────────────────────────
+    if args.model_type == "trident":
+        _run_trident(args, exp_dir, logger)
+        return
+
+    # ── Attention Flow Matching Dehazing branch (Experiment 05) ───────────
+    if args.model_type == "attention_dehaze":
+        _run_attention_dehaze(args, exp_dir, logger)
         return
 
     # ── GAN-based models branch (standard / attention / cycle_dehaze) ──────
@@ -218,6 +236,125 @@ def _run_hazematching(args, exp_dir: str, logger):
 
     logger.info("==================================================")
     logger.info("=== HAZEMATCHING PIPELINE COMPLETED ===")
+    logger.info("==================================================")
+
+
+def _run_trident(args, exp_dir: str, logger):
+    """
+    Trident Dehazing Network sub-pipeline.
+    Calls train.py and evaluate.py under experiments/04_trident_dehazing/.
+    """
+    trident_dir = os.path.join(PROJECT_ROOT, exp_dir)
+    if trident_dir not in sys.path:
+        sys.path.insert(0, trident_dir)
+
+    trident_train = importlib.import_module("experiments.04_trident_dehazing.train")
+    trident_evaluate = importlib.import_module("experiments.04_trident_dehazing.evaluate")
+
+    data_dir = args.data_dir
+    if not os.path.isabs(data_dir):
+        data_dir = os.path.join(PROJECT_ROOT, data_dir)
+
+    if args.mode in ["all", "train"]:
+        logger.info(">>> Launching Trident Dehazing Training Phase...")
+        try:
+            importlib.reload(trident_train)
+            argv = [
+                "train.py",
+                "--backbone",     args.backbone,
+                "--epochs",       str(args.epochs),
+                "--val_interval", str(args.val_interval),
+                "--batch_size",   str(args.batch_size),
+                "--data_dir",     data_dir,
+            ]
+            sys.argv = argv
+            trident_train.main()
+        except Exception as e:
+            logger.error(f"Trident training failed: {e}", exc_info=True)
+            if args.mode in ["train", "all"]:
+                sys.exit(1)
+
+    if args.mode in ["all", "test"]:
+        logger.info(">>> Launching Trident Dehazing Evaluation Phase...")
+        try:
+            importlib.reload(trident_evaluate)
+            best_ckpt = os.path.join(trident_dir, "checkpoints", f"{args.backbone}_best.pth")
+            if not os.path.exists(best_ckpt):
+                best_ckpt = os.path.join(trident_dir, "checkpoints", f"{args.backbone}_latest.pth")
+
+            argv = [
+                "evaluate.py",
+                "--checkpoint", best_ckpt,
+                "--backbone",   args.backbone,
+                "--data_dir",   data_dir,
+            ]
+            sys.argv = argv
+            trident_evaluate.main()
+        except Exception as e:
+            logger.error(f"Trident evaluation failed: {e}", exc_info=True)
+
+    logger.info("==================================================")
+    logger.info("=== TRIDENT PIPELINE COMPLETED ===")
+    logger.info("==================================================")
+
+
+def _run_attention_dehaze(args, exp_dir: str, logger):
+    """
+    Attention Flow Matching Dehazing sub-pipeline (Experiment 05).
+    Calls train.py and evaluate.py under experiments/05_attention_dehaze/.
+    """
+    exp_path = os.path.join(PROJECT_ROOT, exp_dir)
+    if exp_path not in sys.path:
+        sys.path.insert(0, exp_path)
+
+    import train as dehaze_train
+    import evaluate as dehaze_evaluate
+
+    data_dir = args.data_dir
+    if not os.path.isabs(data_dir):
+        data_dir = os.path.join(PROJECT_ROOT, data_dir)
+
+    if args.mode in ["all", "train"]:
+        logger.info(">>> Launching Attention Flow Matching Training Phase...")
+        try:
+            importlib.reload(dehaze_train)
+            argv = [
+                "train.py",
+                "--epochs",       str(args.epochs),
+                "--batch_size",   str(args.batch_size),
+                "--data_dir",     data_dir,
+            ]
+            if args.resume:
+                argv.extend(["--resume", args.resume])
+            sys.argv = argv
+            dehaze_train.main()
+        except Exception as e:
+            logger.error(f"Attention Flow Matching training failed: {e}", exc_info=True)
+            if args.mode in ["train", "all"]:
+                sys.exit(1)
+
+    if args.mode in ["all", "test"]:
+        logger.info(">>> Launching Attention Flow Matching Evaluation Phase...")
+        try:
+            importlib.reload(dehaze_evaluate)
+            best_ckpt = os.path.join(exp_path, "checkpoints", "best.pth")
+            if not os.path.exists(best_ckpt):
+                best_ckpt = os.path.join(exp_path, "checkpoints", "latest.pth")
+
+            argv = [
+                "evaluate.py",
+                "--checkpoint", best_ckpt,
+                "--data_dir",   data_dir,
+                "--n_samples",  str(args.n_samples),
+                "--num_steps",  str(args.num_steps),
+            ]
+            sys.argv = argv
+            dehaze_evaluate.main()
+        except Exception as e:
+            logger.error(f"Attention Flow Matching evaluation failed: {e}", exc_info=True)
+
+    logger.info("==================================================")
+    logger.info("=== ATTENTION FLOW DEHAZING PIPELINE COMPLETED ===")
     logger.info("==================================================")
 
 
