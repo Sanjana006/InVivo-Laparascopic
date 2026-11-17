@@ -8,7 +8,7 @@ preserves the full 3-channel RGB color space for medical laparoscopy.
 
 import os
 from pathlib import Path
-from typing import Tuple, Optional, Callable
+from typing import Tuple, Union, Optional, Callable
 from PIL import Image
 import numpy as np
 import torch
@@ -57,7 +57,7 @@ class RGBLaparoscopyDataset(Dataset):
 
     def __init__(
         self,
-        folder: str | Path,
+        folder: Union[str, Path],
         image_size: int = 256,
         split: str = "train",
         is_train: bool = True,
