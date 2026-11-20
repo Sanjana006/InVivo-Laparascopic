@@ -1,0 +1,9 @@
+torch>=2.1
+torchvision>=0.16
+timm>=0.9
+huggingface_hub>=0.20
+Pillow>=10.0
+numpy>=1.24
+scikit-image>=0.22
+lpips>=0.1.4
+tqdm>=4.66
